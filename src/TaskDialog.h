@@ -292,7 +292,10 @@ void Kerr::TaskDialog::SetMainIcon(ATL::_U_STRINGorID resource)
 {
     if (0 == m_hWnd)
     {
-        CopyStrToWStr(m_config.pszMainIcon, resource.m_lpstr);
+        if (IS_INTRESOURCE(resource.m_lpstr))
+            m_config.pszMainIcon = (PCWSTR)resource.m_lpstr;
+        else
+            CopyStrToWStr(m_config.pszMainIcon, resource.m_lpstr);
         m_config.dwFlags &= ~TDF_USE_HICON_MAIN;
     }
     else
@@ -326,7 +329,10 @@ void Kerr::TaskDialog::SetFooterIcon(ATL::_U_STRINGorID resource)
 {
     if (0 == m_hWnd)
     {
-        CopyStrToWStr(m_config.pszFooterIcon, resource.m_lpstr);
+        if (IS_INTRESOURCE(resource.m_lpstr))
+            m_config.pszFooterIcon = (PCWSTR)resource.m_lpstr;
+        else
+            CopyStrToWStr(m_config.pszFooterIcon, resource.m_lpstr);
         m_config.dwFlags &= ~TDF_USE_HICON_FOOTER;
     }
     else

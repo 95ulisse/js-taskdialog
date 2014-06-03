@@ -11,7 +11,7 @@ using namespace v8;
 // Class definition
 // ************************************************
 
-#define PROTOTYPE_PROP_IMPL(name) \
+#define PROTOTYPE_PROP_DEF(name) \
     static Handle<Value> Set##name(const Arguments& args);
 
 class TaskDialogWrap : public node::ObjectWrap {
@@ -32,18 +32,21 @@ class TaskDialogWrap : public node::ObjectWrap {
         static Handle<Value> New(const Arguments& args);
 
         // Prototype properties implementation
-        PROTOTYPE_PROP_IMPL(WindowTitle)
-        PROTOTYPE_PROP_IMPL(MainInstruction)
-        PROTOTYPE_PROP_IMPL(Content)
-        PROTOTYPE_PROP_IMPL(CollapsedControlText)
-        PROTOTYPE_PROP_IMPL(ExpandedControlText)
-        PROTOTYPE_PROP_IMPL(ExpandedInformation)
-        PROTOTYPE_PROP_IMPL(VerificationText)
-        PROTOTYPE_PROP_IMPL(Footer)
+        PROTOTYPE_PROP_DEF(WindowTitle)
+        PROTOTYPE_PROP_DEF(MainInstruction)
+        PROTOTYPE_PROP_DEF(Content)
+        PROTOTYPE_PROP_DEF(CollapsedControlText)
+        PROTOTYPE_PROP_DEF(ExpandedControlText)
+        PROTOTYPE_PROP_DEF(ExpandedInformation)
+        PROTOTYPE_PROP_DEF(VerificationText)
+        PROTOTYPE_PROP_DEF(Footer)
 
-        PROTOTYPE_PROP_IMPL(UseLinks)
-        PROTOTYPE_PROP_IMPL(Cancelable)
-        PROTOTYPE_PROP_IMPL(Minimizable)
+        PROTOTYPE_PROP_DEF(UseLinks)
+        PROTOTYPE_PROP_DEF(Cancelable)
+        PROTOTYPE_PROP_DEF(Minimizable)
+
+        PROTOTYPE_PROP_DEF(MainIcon)
+        PROTOTYPE_PROP_DEF(FooterIcon)
 
         // Prototype methods
         static Handle<Value> Show(const Arguments& args);
@@ -75,6 +78,15 @@ class TaskDialogWrap : public node::ObjectWrap {
         return Undefined(); \
     }
 
+#define PROTOTYPE_PROP_INT_IMPL(name) \
+    Handle<Value> TaskDialogWrap::Set##name(const Arguments& args) { \
+        if (args.Length() != 1 || !args[0]->IsNumber()) \
+            return ThrowException(Exception::TypeError(String::New("Expected only one integer argument"))); \
+        Kerr::TaskDialog* td = node::ObjectWrap::Unwrap<TaskDialogWrap>(args.This())->_taskDialog; \
+        td->Set##name(args[0]->ToNumber()->IntegerValue()); \
+        return Undefined(); \
+    }
+
 Handle<Function> TaskDialogWrap::Init() {
 
     // Prepare constructor template
@@ -96,6 +108,9 @@ Handle<Function> TaskDialogWrap::Init() {
     PROTOTYPE_PROP(proto, UseLinks)
     PROTOTYPE_PROP(proto, Cancelable)
     PROTOTYPE_PROP(proto, Minimizable)
+    
+    PROTOTYPE_PROP(proto, MainIcon)
+    PROTOTYPE_PROP(proto, FooterIcon)
 
     // Prototype methods
     proto->Set(String::NewSymbol("Show"), FunctionTemplate::New(Show)->GetFunction());
@@ -144,6 +159,8 @@ PROTOTYPE_PROP_STRING_IMPL(Footer)
 PROTOTYPE_PROP_BOOL_IMPL(UseLinks)
 PROTOTYPE_PROP_BOOL_IMPL(Cancelable)
 PROTOTYPE_PROP_BOOL_IMPL(Minimizable)
+PROTOTYPE_PROP_INT_IMPL(MainIcon)
+PROTOTYPE_PROP_INT_IMPL(FooterIcon)
 
 // Prototype methods
 Handle<Value> TaskDialogWrap::Show(const Arguments& args) {
