@@ -100,6 +100,9 @@ namespace Kerr
         void SetFooterIcon(HICON handle);
         void SetFooterIcon(ATL::_U_STRINGorID resource);
 
+        // Buttons
+        CAtlArray<TASKDIALOG_BUTTON>& Buttons();
+        CAtlArray<TASKDIALOG_BUTTON>& RadioButtons();
         void AddButton(ATL::_U_STRINGorID text,
                        int id);
 
@@ -343,6 +346,16 @@ void Kerr::TaskDialog::SetFooterIcon(ATL::_U_STRINGorID resource)
                     TDIE_ICON_FOOTER,
                     reinterpret_cast<LPARAM>(resource.m_lpstr));
     }
+}
+
+CAtlArray<TASKDIALOG_BUTTON>& Kerr::TaskDialog::Buttons()
+{
+    return m_buttons;
+}
+
+CAtlArray<TASKDIALOG_BUTTON>& Kerr::TaskDialog::RadioButtons()
+{
+    return m_radioButtons;
 }
 
 void Kerr::TaskDialog::AddButton(ATL::_U_STRINGorID text,

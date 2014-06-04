@@ -26,6 +26,10 @@ class TaskDialogWrap : public node::ObjectWrap {
 
         // Instance members
         Kerr::TaskDialog* _taskDialog;
+        Persistent<Function> _callbackFunction;
+
+        // Private helper functions
+        void RaiseEvent(const char* eventName, Handle<Value> eventData);
 
         // Constructor
         static Persistent<Function> _constructor;
@@ -50,6 +54,8 @@ class TaskDialogWrap : public node::ObjectWrap {
 
         // Prototype methods
         static Handle<Value> Show(const Arguments& args);
+        static Handle<Value> SetButtons(const Arguments& args);
+        static Handle<Value> SetRadioButtons(const Arguments& args);
 };
 
 // ************************************************
@@ -114,6 +120,8 @@ Handle<Function> TaskDialogWrap::Init() {
 
     // Prototype methods
     proto->Set(String::NewSymbol("Show"), FunctionTemplate::New(Show)->GetFunction());
+    proto->Set(String::NewSymbol("SetButtons"), FunctionTemplate::New(SetButtons)->GetFunction());
+    proto->Set(String::NewSymbol("SetRadioButtons"), FunctionTemplate::New(SetRadioButtons)->GetFunction());
 
     // Actual constructor function
     _constructor = Persistent<Function>::New(tpl->GetFunction());
@@ -127,22 +135,39 @@ TaskDialogWrap::TaskDialogWrap(Kerr::TaskDialog* td):
 }
 
 TaskDialogWrap::~TaskDialogWrap() {
+    _callbackFunction.Dispose();
     if (_taskDialog)
         delete _taskDialog;
+}
+
+void TaskDialogWrap::RaiseEvent(const char* eventName, Handle<Value> eventData)
+{
+    Handle<Value> args[] = {
+        String::New(eventName),
+        eventData
+    };
+    _callbackFunction->Call(Context::GetCurrent()->Global(), 2, args);
 }
 
 // Constructor
 Persistent<Function> TaskDialogWrap::_constructor;
 Handle<Value> TaskDialogWrap::New(const v8::Arguments& args) {
 
+    // Makes sure that a single function is passed
+    if (args.Length() != 1 || !args[0]->IsFunction())
+        return ThrowException(Exception::TypeError(String::New("Expected only one function as parameter")));
+
     // Makes sure that it is used as a constructor
-    if (!args.IsConstructCall())
-        return _constructor->NewInstance();
+    if (!args.IsConstructCall()) {
+        Handle<Value> arr[] = { args[0] };
+        return _constructor->NewInstance(1, arr);
+    }
 
     // Creates and wraps a TaskDialog
     Kerr::TaskDialog* td = new Kerr::TaskDialog();
     TaskDialogWrap* tdw = new TaskDialogWrap(td);
     tdw->Wrap(args.This());
+    tdw->_callbackFunction = Persistent<Function>::New(Handle<Function>::Cast(args[0]));
     return args.This();
 
 }
@@ -163,10 +188,69 @@ PROTOTYPE_PROP_INT_IMPL(MainIcon)
 PROTOTYPE_PROP_INT_IMPL(FooterIcon)
 
 // Prototype methods
+
+Handle<Value> TaskDialogWrap::SetButtons(const Arguments& args) {
+    
+    // Checks arguments
+    if (args.Length() != 1 || !args[0]->IsArray())
+        return ThrowException(Exception::TypeError(String::New("Expected only one array as parameter")));
+    
+    // TaskDialog
+    TaskDialogWrap* tdw = node::ObjectWrap::Unwrap<TaskDialogWrap>(args.This());
+    Kerr::TaskDialog* td = tdw->_taskDialog;
+
+    HandleScope scope;
+
+    // Builds the buttons list from the JS array
+    Handle<Array> arr = Handle<Array>::Cast(args[0]);
+    td->Buttons().RemoveAll();
+    for (int i = 0; i < arr->Length(); i++) {
+        if (!arr->Get(i)->IsArray())
+            return ThrowException(Exception::TypeError(String::New("Parameter must be an array of arrays, where the first member is a custom value and the second one is the text to display")));
+        Handle<Array> pair = Handle<Array>::Cast(arr->Get(i));
+        if (pair->Length() != 2 || !pair->Get(1)->IsString())
+            return ThrowException(Exception::TypeError(String::New("Parameter must be an array of arrays, where the first member is a custom value and the second one is the text to display")));
+        String::Utf8Value strVal(pair->Get(1)->ToString());
+        td->AddButton(*strVal, 101 + i);
+    }
+
+    return scope.Close(Undefined());
+
+}
+
+Handle<Value> TaskDialogWrap::SetRadioButtons(const Arguments& args) {
+    
+    // Checks arguments
+    if (args.Length() != 1 || !args[0]->IsArray())
+        return ThrowException(Exception::TypeError(String::New("Expected only one array as parameter")));
+    
+    // TaskDialog
+    TaskDialogWrap* tdw = node::ObjectWrap::Unwrap<TaskDialogWrap>(args.This());
+    Kerr::TaskDialog* td = tdw->_taskDialog;
+
+    HandleScope scope;
+
+    // Builds the buttons list from the JS array
+    Handle<Array> arr = Handle<Array>::Cast(args[0]);
+    td->RadioButtons().RemoveAll();
+    for (int i = 0; i < arr->Length(); i++) {
+        if (!arr->Get(i)->IsArray())
+            return ThrowException(Exception::TypeError(String::New("Parameter must be an array of arrays, where the first member is a custom value and the second one is the text to display")));
+        Handle<Array> pair = Handle<Array>::Cast(arr->Get(i));
+        if (pair->Length() != 2 || !pair->Get(1)->IsString())
+            return ThrowException(Exception::TypeError(String::New("Parameter must be an array of arrays, where the first member is a custom value and the second one is the text to display")));
+        String::Utf8Value strVal(pair->Get(1)->ToString());
+        td->AddRadioButton(*strVal, 101 + i);
+    }
+
+    return scope.Close(Undefined());
+}
+
 Handle<Value> TaskDialogWrap::Show(const Arguments& args) {
     
-    // Shows the modal
-    Kerr::TaskDialog* td = node::ObjectWrap::Unwrap<TaskDialogWrap>(args.This())->_taskDialog;
+    // Extracts the Task dialog
+    TaskDialogWrap* tdw = node::ObjectWrap::Unwrap<TaskDialogWrap>(args.This());
+    Kerr::TaskDialog* td = tdw->_taskDialog;
     td->DoModal();
 
     // Creates a new object to hold the results

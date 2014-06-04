@@ -1,11 +1,6 @@
 var TaskDialogNative = require('./build/Debug/TaskDialog'),
-    ICONS = {
-        'none': 0,
-        'warning': -1,
-        'error': -2,
-        'info': -3,
-        'shield': -4
-    };
+    EventEmitter = require('events').EventEmitter,
+    util = require('util');
 
 // Helper function to define an hidden property (non enumerable, non configurable, but writable)
 function defineHiddenProperty(obj, name, value) {
@@ -19,35 +14,78 @@ function defineHiddenProperty(obj, name, value) {
 
 // TaskDialog class
 function TaskDialog(config) {
-    defineHiddenProperty(this, '_native', new TaskDialogNative());
+
+    // EventEmitter constructor
+    EventEmitter.call(this);
+
+    // Hidden property to store the native object
+    defineHiddenProperty(this, '_native', new TaskDialogNative(this.emit.bind(this)));
+
+    // Collections
+    this.Buttons = [];
+    this.RadioButtons = [];
+
+    // Shortcut properties via constructor
     if(config)
         for (var k in config)
             this[k] = config[k];
 }
 
+// Inherits EventEmitter
+util.inherits(TaskDialog, EventEmitter);
+
 // Wraps the Set* methods of the native interface in a property-like interface
-for (var k in TaskDialogNative.prototype)
-    if (k.substring(0, 3) === 'Set')
-        (function (prop) {
-            Object.defineProperty(TaskDialog.prototype, prop, {
-                configurable: false,
-                enumerable: true,
-                get: function () {
-                    return this['_' + prop];
-                },
-                set: function (val) {
-                    if (!Object.prototype.hasOwnProperty.call(this, '_' + prop))
-                        defineHiddenProperty(this, '_' + prop, val);
-                    else
-                        this['_' + prop] = val;
-                    this._native['Set' + prop](val);
-                }
-            });
-        })(k.substring(3));
+var methods = [
+    'WindowTitle',
+    'MainInstruction',
+    'Content',
+    'CollapsedControlText',
+    'ExpandedControlText',
+    'ExpandedInformation',
+    'VerificationText',
+    'Footer',
+    'UseLinks',
+    'Cancelable',
+    'Minimizable',
+    'MainIcon',
+    'FooterIcon'
+];
+for (var i = 0; i < methods.length; i++)
+    (function (prop) {
+        Object.defineProperty(TaskDialog.prototype, prop, {
+            configurable: false,
+            enumerable: true,
+            get: function () {
+                return this['_' + prop];
+            },
+            set: function (val) {
+                if (!Object.prototype.hasOwnProperty.call(this, '_' + prop))
+                    defineHiddenProperty(this, '_' + prop, val);
+                else
+                    this['_' + prop] = val;
+                this._native['Set' + prop](val);
+            }
+        });
+    })(methods[i]);
 
 // Show method
 TaskDialog.prototype.Show = function () {
-    return this._native.Show();
+
+    // Makes sure that buttons are up to date
+    this._native.SetButtons(this.Buttons || []);
+    this._native.SetRadioButtons(this.RadioButtons || []);
+
+    // Shows the dialog
+    var res = this._native.Show();
+
+    // Maps the native results to meaningful data
+    if (res.button >= 101)
+        res.button = this.Buttons[res.button - 101][0];
+    if (res.radio >= 101)
+        res.radio = this.RadioButtons[res.radio - 101][0];
+
+    // Returns the result
+    return res;
 };
 
 // Freezes TaskDialog prototype
@@ -55,3 +93,11 @@ Object.freeze(TaskDialog.prototype);
 
 // Exports the TaskDialog class
 module.exports = TaskDialog;
+
+/*ICONS = {
+    'none': 0,
+    'warning': -1,
+    'error': -2,
+    'info': -3,
+    'shield': -4
+};*/
