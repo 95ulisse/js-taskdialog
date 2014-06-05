@@ -77,6 +77,20 @@ namespace Kerr
         #pragma warning(pop)
     }
 
+    void CopyWStrToStr(char*& dest, PCWSTR wsource)
+    {
+        #pragma warning(push)
+        #pragma warning(disable:4996)
+
+        std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+        std::string source = converter.to_bytes(wsource);
+        dest = new char[source.length() + 1];
+        std::size_t charsCopied = source.copy(dest, source.length());
+        dest[charsCopied] = '\0';
+
+        #pragma warning(pop)
+    }
+
     class TaskDialog : public CWindow
     {
     public:
@@ -111,6 +125,7 @@ namespace Kerr
 
         // Flags
         void SetUseLinks(bool useLinks = true);
+        void SetUseCommandLinks(bool useCommandLinks = true);
         void SetCancelable(bool cancelable = true);
         void SetMinimizable(bool minimizable = true);
 
@@ -378,6 +393,15 @@ void Kerr::TaskDialog::SetUseLinks(bool useLinks)
 {
     ASSERT(m_hWnd == 0);
     if (useLinks)
+        m_config.dwFlags |= TDF_ENABLE_HYPERLINKS;
+    else
+        m_config.dwFlags &= ~TDF_ENABLE_HYPERLINKS;
+}
+
+void Kerr::TaskDialog::SetUseCommandLinks(bool useCommandLinks)
+{
+    ASSERT(m_hWnd == 0);
+    if (useCommandLinks)
         m_config.dwFlags |= TDF_USE_COMMAND_LINKS;
     else
         m_config.dwFlags &= ~TDF_USE_COMMAND_LINKS;

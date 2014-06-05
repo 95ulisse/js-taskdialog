@@ -8,7 +8,91 @@
 using namespace v8;
 
 // ************************************************
-// Class definition
+// JSTaskDialog
+// ************************************************
+
+// Inherits Kerr::TaskDialog to forward events to a JS function
+class JSTaskDialog : public Kerr::TaskDialog {
+    public:
+        JSTaskDialog(Persistent<Function> callback);
+        ~JSTaskDialog();
+    private:
+        Persistent<Function> _callbackFunction;
+        void RaiseJSEvent(const char* eventName, Handle<Value> e);
+        void OnHyperlinkClicked(PCWSTR /*url*/);
+        void OnButtonClicked(int /*buttonId*/, bool& closeDialog);
+        void OnRadioButtonClicked(int /*buttonId*/);
+        void OnVerificationClicked(bool /*checked*/);
+        void OnExpandoButtonClicked(bool /*expanded*/);
+};
+
+JSTaskDialog::JSTaskDialog(Persistent<Function> callback) :
+    _callbackFunction(callback)
+{
+    SetMainIcon((ATL::_U_STRINGorID)(UINT)0);
+    SetFooterIcon((ATL::_U_STRINGorID)(UINT)0);
+}
+
+JSTaskDialog::~JSTaskDialog() {
+    _callbackFunction.Dispose();
+}
+
+void JSTaskDialog::RaiseJSEvent(const char* eventName, Handle<Value> e)
+{
+    Handle<Value> arr[] = {
+        String::New(eventName),
+        e
+    };
+    _callbackFunction->Call(Context::GetCurrent()->Global(), 2, arr);
+}
+
+void JSTaskDialog::OnHyperlinkClicked(PCWSTR url) {
+    char* str = "";
+    Kerr::CopyWStrToStr(str, url);
+    
+    HandleScope scope;
+    Handle<Object> e = Object::New();
+    e->Set(String::NewSymbol("data"), String::New(str));
+    RaiseJSEvent("click:link", e);
+    scope.Close(Undefined());
+}
+
+void JSTaskDialog::OnButtonClicked(int buttonId, bool& closeDialog) {
+    HandleScope scope;
+    Handle<Object> e = Object::New();
+    e->Set(String::NewSymbol("cancel"), Boolean::New(false));
+    e->Set(String::NewSymbol("data"), Integer::New(buttonId));
+    RaiseJSEvent("click:button", e);
+    closeDialog = !e->Get(String::NewSymbol("cancel"))->BooleanValue();
+    scope.Close(Undefined());
+}
+
+void JSTaskDialog::OnRadioButtonClicked(int buttonId) {
+    HandleScope scope;
+    Handle<Object> e = Object::New();
+    e->Set(String::NewSymbol("data"), Integer::New(buttonId));
+    RaiseJSEvent("click:radio", e);
+    scope.Close(Undefined());
+}
+
+void JSTaskDialog::OnVerificationClicked(bool checked) {
+    HandleScope scope;
+    Handle<Object> e = Object::New();
+    e->Set(String::NewSymbol("data"), Boolean::New(checked));
+    RaiseJSEvent("click:verification", e);
+    scope.Close(Undefined());
+}
+
+void JSTaskDialog::OnExpandoButtonClicked(bool expanded) {
+    HandleScope scope;
+    Handle<Object> e = Object::New();
+    e->Set(String::NewSymbol("data"), Boolean::New(expanded));
+    RaiseJSEvent("click:expando", e);
+    scope.Close(Undefined());
+}
+
+// ************************************************
+// TaskDialogWrap - Class definition
 // ************************************************
 
 #define PROTOTYPE_PROP_DEF(name) \
@@ -21,12 +105,11 @@ class TaskDialogWrap : public node::ObjectWrap {
 
     private:
 
-        explicit TaskDialogWrap(Kerr::TaskDialog* td);
+        explicit TaskDialogWrap(JSTaskDialog* td);
         ~TaskDialogWrap();
 
         // Instance members
-        Kerr::TaskDialog* _taskDialog;
-        Persistent<Function> _callbackFunction;
+        JSTaskDialog* _taskDialog;
 
         // Private helper functions
         void RaiseEvent(const char* eventName, Handle<Value> eventData);
@@ -46,6 +129,7 @@ class TaskDialogWrap : public node::ObjectWrap {
         PROTOTYPE_PROP_DEF(Footer)
 
         PROTOTYPE_PROP_DEF(UseLinks)
+        PROTOTYPE_PROP_DEF(UseCommandLinks)
         PROTOTYPE_PROP_DEF(Cancelable)
         PROTOTYPE_PROP_DEF(Minimizable)
 
@@ -59,7 +143,7 @@ class TaskDialogWrap : public node::ObjectWrap {
 };
 
 // ************************************************
-// Implementation
+// TaskDialogWrap - Implementation
 // ************************************************
 
 #define PROTOTYPE_PROP(proto, name) \
@@ -69,7 +153,7 @@ class TaskDialogWrap : public node::ObjectWrap {
     Handle<Value> TaskDialogWrap::Set##name(const Arguments& args) { \
         if (args.Length() != 1 || !args[0]->IsString()) \
             return ThrowException(Exception::TypeError(String::New("Expected only one string argument"))); \
-        Kerr::TaskDialog* td = node::ObjectWrap::Unwrap<TaskDialogWrap>(args.This())->_taskDialog; \
+        JSTaskDialog* td = node::ObjectWrap::Unwrap<TaskDialogWrap>(args.This())->_taskDialog; \
         String::Utf8Value strJs(args[0]->ToString()); \
         td->Set##name(*strJs); \
         return Undefined(); \
@@ -79,7 +163,7 @@ class TaskDialogWrap : public node::ObjectWrap {
     Handle<Value> TaskDialogWrap::Set##name(const Arguments& args) { \
         if (args.Length() != 1 || !args[0]->IsBoolean()) \
             return ThrowException(Exception::TypeError(String::New("Expected only one boolean argument"))); \
-        Kerr::TaskDialog* td = node::ObjectWrap::Unwrap<TaskDialogWrap>(args.This())->_taskDialog; \
+        JSTaskDialog* td = node::ObjectWrap::Unwrap<TaskDialogWrap>(args.This())->_taskDialog; \
         td->Set##name(args[0]->ToBoolean()->BooleanValue()); \
         return Undefined(); \
     }
@@ -88,7 +172,7 @@ class TaskDialogWrap : public node::ObjectWrap {
     Handle<Value> TaskDialogWrap::Set##name(const Arguments& args) { \
         if (args.Length() != 1 || !args[0]->IsNumber()) \
             return ThrowException(Exception::TypeError(String::New("Expected only one integer argument"))); \
-        Kerr::TaskDialog* td = node::ObjectWrap::Unwrap<TaskDialogWrap>(args.This())->_taskDialog; \
+        JSTaskDialog* td = node::ObjectWrap::Unwrap<TaskDialogWrap>(args.This())->_taskDialog; \
         td->Set##name(args[0]->ToNumber()->IntegerValue()); \
         return Undefined(); \
     }
@@ -112,6 +196,7 @@ Handle<Function> TaskDialogWrap::Init() {
     PROTOTYPE_PROP(proto, Footer)
 
     PROTOTYPE_PROP(proto, UseLinks)
+    PROTOTYPE_PROP(proto, UseCommandLinks)
     PROTOTYPE_PROP(proto, Cancelable)
     PROTOTYPE_PROP(proto, Minimizable)
     
@@ -129,24 +214,14 @@ Handle<Function> TaskDialogWrap::Init() {
 }
 
 
-TaskDialogWrap::TaskDialogWrap(Kerr::TaskDialog* td):
+TaskDialogWrap::TaskDialogWrap(JSTaskDialog* td):
     _taskDialog(td)
 {
 }
 
 TaskDialogWrap::~TaskDialogWrap() {
-    _callbackFunction.Dispose();
     if (_taskDialog)
         delete _taskDialog;
-}
-
-void TaskDialogWrap::RaiseEvent(const char* eventName, Handle<Value> eventData)
-{
-    Handle<Value> args[] = {
-        String::New(eventName),
-        eventData
-    };
-    _callbackFunction->Call(Context::GetCurrent()->Global(), 2, args);
 }
 
 // Constructor
@@ -164,10 +239,9 @@ Handle<Value> TaskDialogWrap::New(const v8::Arguments& args) {
     }
 
     // Creates and wraps a TaskDialog
-    Kerr::TaskDialog* td = new Kerr::TaskDialog();
+    JSTaskDialog* td = new JSTaskDialog(Persistent<Function>::New(Handle<Function>::Cast(args[0])));
     TaskDialogWrap* tdw = new TaskDialogWrap(td);
     tdw->Wrap(args.This());
-    tdw->_callbackFunction = Persistent<Function>::New(Handle<Function>::Cast(args[0]));
     return args.This();
 
 }
@@ -182,6 +256,7 @@ PROTOTYPE_PROP_STRING_IMPL(ExpandedInformation)
 PROTOTYPE_PROP_STRING_IMPL(VerificationText)
 PROTOTYPE_PROP_STRING_IMPL(Footer)
 PROTOTYPE_PROP_BOOL_IMPL(UseLinks)
+PROTOTYPE_PROP_BOOL_IMPL(UseCommandLinks)
 PROTOTYPE_PROP_BOOL_IMPL(Cancelable)
 PROTOTYPE_PROP_BOOL_IMPL(Minimizable)
 PROTOTYPE_PROP_INT_IMPL(MainIcon)
@@ -197,7 +272,7 @@ Handle<Value> TaskDialogWrap::SetButtons(const Arguments& args) {
     
     // TaskDialog
     TaskDialogWrap* tdw = node::ObjectWrap::Unwrap<TaskDialogWrap>(args.This());
-    Kerr::TaskDialog* td = tdw->_taskDialog;
+    JSTaskDialog* td = tdw->_taskDialog;
 
     HandleScope scope;
 
@@ -226,7 +301,7 @@ Handle<Value> TaskDialogWrap::SetRadioButtons(const Arguments& args) {
     
     // TaskDialog
     TaskDialogWrap* tdw = node::ObjectWrap::Unwrap<TaskDialogWrap>(args.This());
-    Kerr::TaskDialog* td = tdw->_taskDialog;
+    JSTaskDialog* td = tdw->_taskDialog;
 
     HandleScope scope;
 
@@ -250,7 +325,7 @@ Handle<Value> TaskDialogWrap::Show(const Arguments& args) {
     
     // Extracts the Task dialog
     TaskDialogWrap* tdw = node::ObjectWrap::Unwrap<TaskDialogWrap>(args.This());
-    Kerr::TaskDialog* td = tdw->_taskDialog;
+    JSTaskDialog* td = tdw->_taskDialog;
     td->DoModal();
 
     // Creates a new object to hold the results

@@ -19,7 +19,23 @@ function TaskDialog(config) {
     EventEmitter.call(this);
 
     // Hidden property to store the native object
-    defineHiddenProperty(this, '_native', new TaskDialogNative(this.emit.bind(this)));
+    defineHiddenProperty(this, '_native', new TaskDialogNative((function (eventName, eventData) {
+
+        // Before passing the events to the user, we need to adjust the results
+        // translating native IDs to meaningful data
+        switch(eventName) {
+            case 'click:button':
+                if (eventData.data >= 101)
+                    eventData.data = this.Buttons[eventData.data - 101][0];
+                break;
+            case 'click:radio':
+                if (eventData.data >= 101)
+                    eventData.data = this.RadioButtons[eventData.data - 101][0];
+                break;
+        }
+        this.emit(eventName, eventData);
+
+    }).bind(this)));
 
     // Collections
     this.Buttons = [];
@@ -45,6 +61,7 @@ var methods = [
     'VerificationText',
     'Footer',
     'UseLinks',
+    'UseCommandLinks',
     'Cancelable',
     'Minimizable',
     'MainIcon',
