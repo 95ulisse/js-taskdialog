@@ -63,9 +63,7 @@ var methods = [
     'UseLinks',
     'UseCommandLinks',
     'Cancelable',
-    'Minimizable',
-    'MainIcon',
-    'FooterIcon'
+    'Minimizable'
 ];
 for (var i = 0; i < methods.length; i++)
     (function (prop) {
@@ -81,6 +79,46 @@ for (var i = 0; i < methods.length; i++)
                 else
                     this['_' + prop] = val;
                 this._native['Set' + prop](val);
+            }
+        });
+    })(methods[i]);
+
+// Wraps the Set*Icon methods of the native interface in a property-like interface.
+// This methods should translate icon indexes to a meaningful string,
+// and must enure that the nerby text isn't null, otherwise the app will crash.
+methods = [
+    [ 'MainIcon', 'MainInstruction' ],
+    [ 'FooterIcon', 'Footer' ]
+];
+var ICONS = {
+    'none': 0,
+    'warning': -1,
+    'error': -2,
+    'info': -3,
+    'shield': -4
+};
+for (var i = 0; i < methods.length; i++)
+    (function (prop) {
+        Object.defineProperty(TaskDialog.prototype, prop[0], {
+            configurable: false,
+            enumerable: true,
+            get: function () {
+                return this['_' + prop[0]];
+            },
+            set: function (val) {
+                
+                if (!Object.prototype.hasOwnProperty.call(this, '_' + prop[1]))
+                    throw new Error('Before setting ' + prop[0] + ', ensure that ' + prop[1] + ' has a value');
+
+                if (typeof ICONS[val] === 'undefined')
+                    throw new Error('Unknown icon: ' + val);
+                val = ICONS[val];
+
+                if (!Object.prototype.hasOwnProperty.call(this, '_' + prop[0]))
+                    defineHiddenProperty(this, '_' + prop[0], val);
+                else
+                    this['_' + prop[0]] = val;
+                this._native['Set' + prop[0]](val);
             }
         });
     })(methods[i]);
@@ -110,11 +148,3 @@ Object.freeze(TaskDialog.prototype);
 
 // Exports the TaskDialog class
 module.exports = TaskDialog;
-
-/*ICONS = {
-    'none': 0,
-    'warning': -1,
-    'error': -2,
-    'info': -3,
-    'shield': -4
-};*/
