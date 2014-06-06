@@ -193,6 +193,7 @@ Kerr::TaskDialog::TaskDialog() :
 
 void Kerr::TaskDialog::SetWindowTitle(ATL::_U_STRINGorID text)
 {
+
     if (0 == m_hWnd)
     {
         CopyStrToWStr(m_config.pszWindowTitle, text.m_lpstr);
@@ -220,29 +221,33 @@ void Kerr::TaskDialog::SetWindowTitle(ATL::_U_STRINGorID text)
 
 void Kerr::TaskDialog::SetMainInstruction(ATL::_U_STRINGorID text)
 {
+    PCWSTR wstr = NULL;
+    CopyStrToWStr(wstr, text.m_lpstr);
     if (0 == m_hWnd)
     {
-        CopyStrToWStr(m_config.pszMainInstruction, text.m_lpstr);
+        m_config.pszMainInstruction = wstr;
     }
     else
     {
         SendMessage(TDM_SET_ELEMENT_TEXT,
                     TDE_MAIN_INSTRUCTION,
-                    reinterpret_cast<LPARAM>(text.m_lpstr));
+                    reinterpret_cast<LPARAM>(wstr));
     }
 }
 
 void Kerr::TaskDialog::SetContent(ATL::_U_STRINGorID text)
 {
+    PCWSTR wstr = NULL;
+    CopyStrToWStr(wstr, text.m_lpstr);
     if (0 == m_hWnd)
     {
-        CopyStrToWStr(m_config.pszContent, text.m_lpstr);
+        m_config.pszContent = wstr;
     }
     else
     {
         SendMessage(TDM_SET_ELEMENT_TEXT,
                     TDE_CONTENT,
-                    reinterpret_cast<LPARAM>(text.m_lpstr));
+                    reinterpret_cast<LPARAM>(wstr));
     }
 }
 
@@ -253,15 +258,17 @@ void Kerr::TaskDialog::SetVerificationText(ATL::_U_STRINGorID text)
 
 void Kerr::TaskDialog::SetExpandedInformation(ATL::_U_STRINGorID text)
 {
+    PCWSTR wstr = NULL;
+    CopyStrToWStr(wstr, text.m_lpstr);
     if (0 == m_hWnd)
     {
-        CopyStrToWStr(m_config.pszExpandedInformation, text.m_lpstr);
+        m_config.pszExpandedInformation = wstr;
     }
     else
     {
         SendMessage(TDM_SET_ELEMENT_TEXT,
                     TDE_EXPANDED_INFORMATION,
-                    reinterpret_cast<LPARAM>(text.m_lpstr));
+                    reinterpret_cast<LPARAM>(wstr));
     }
 }
 
@@ -277,15 +284,17 @@ void Kerr::TaskDialog::SetCollapsedControlText(ATL::_U_STRINGorID text)
 
 void Kerr::TaskDialog::SetFooter(ATL::_U_STRINGorID text)
 {
+    PCWSTR wstr = NULL;
+    CopyStrToWStr(wstr, text.m_lpstr);
     if (0 == m_hWnd)
     {
-        CopyStrToWStr(m_config.pszFooter, text.m_lpstr);
+        m_config.pszFooter = wstr;
     }
     else
     {
         SendMessage(TDM_SET_ELEMENT_TEXT,
                     TDE_FOOTER,
-                    reinterpret_cast<LPARAM>(text.m_lpstr));
+                    reinterpret_cast<LPARAM>(wstr));
     }
 }
 
