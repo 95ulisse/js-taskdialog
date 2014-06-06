@@ -129,7 +129,7 @@ namespace Kerr
         void SetCancelable(bool cancelable = true);
         void SetMinimizable(bool minimizable = true);
 
-        HRESULT DoModal(HWND parent = ::GetActiveWindow());
+        virtual HRESULT DoModal(HWND parent = ::GetActiveWindow());
         int GetSelectedButtonId() const;
         int GetSelectedRadioButtonId() const;
         bool VerificiationChecked() const;

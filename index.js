@@ -19,12 +19,14 @@ function TaskDialog(config) {
     EventEmitter.call(this);
 
     // Hidden property to store the native object
-    defineHiddenProperty(this, '_native', new TaskDialogNative((function (eventName, eventData) {
+    defineHiddenProperty(this, '_native', new TaskDialogNative(function (eventName, eventData) {
 
         // Before passing the events to the user, we need to adjust the results
         // translating native IDs to meaningful data
         switch(eventName) {
             case 'click:button':
+                if (eventData.data > 1000) // Removes the increment of 1000 for message-only buttons
+                    eventData.data -= 1000;
                 if (eventData.data >= 101)
                     eventData.data = this.Buttons[eventData.data - 101][0];
                 break;
@@ -35,7 +37,7 @@ function TaskDialog(config) {
         }
         this.emit(eventName, eventData);
 
-    }).bind(this)));
+    }.bind(this)));
 
     // Collections
     this.Buttons = [];
@@ -124,23 +126,32 @@ for (var i = 0; i < methods.length; i++)
     })(methods[i]);
 
 // Show method
-TaskDialog.prototype.Show = function () {
+TaskDialog.prototype.Show = function (cb) {
 
     // Makes sure that buttons are up to date
     this._native.SetButtons(this.Buttons || []);
     this._native.SetRadioButtons(this.RadioButtons || []);
 
     // Shows the dialog
-    var res = this._native.Show();
+    if (cb) {
+        this._native.Show(function (res) {
 
-    // Maps the native results to meaningful data
-    if (res.button >= 101)
-        res.button = this.Buttons[res.button - 101][0];
-    if (res.radio >= 101)
-        res.radio = this.RadioButtons[res.radio - 101][0];
+            // Maps the native results to meaningful data
+            if (res.button > 1000) // Removes the increment of 1000 for message-only buttons
+                res.button -= 1000;
+            if (res.button >= 101)
+                res.button = this.Buttons[res.button - 101][0];
+            if (res.radio >= 101)
+                res.radio = this.RadioButtons[res.radio - 101][0];
 
-    // Returns the result
-    return res;
+            // Returns the result
+            cb(res);
+
+        }.bind(this));
+    } else {
+        this._native.Show();
+    }
+
 };
 
 // Freezes TaskDialog prototype
