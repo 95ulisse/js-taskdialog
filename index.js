@@ -1,6 +1,19 @@
 var TaskDialogNative = require('./build/Debug/TaskDialog'),
     EventEmitter = require('events').EventEmitter,
-    util = require('util');
+    util = require('util'),
+
+    ICONS = {
+        'none': 0,
+        'warning': -1,
+        'error': -2,
+        'info': -3,
+        'shield': -4
+    },
+
+    STANDARD_BUTTONS = {
+        1: 'ok',
+        2: 'cancel'
+    };
 
 // Helper function to define an hidden property (non enumerable, non configurable, but writable)
 function defineHiddenProperty(obj, name, value) {
@@ -29,6 +42,8 @@ function TaskDialog(config) {
                     eventData.data -= 1000;
                 if (eventData.data >= 101)
                     eventData.data = this.Buttons[eventData.data - 101][0];
+                if (eventData.data in STANDARD_BUTTONS)
+                    eventData.data = STANDARD_BUTTONS[eventData.data];
                 break;
             case 'click:radio':
                 if (eventData.data >= 101)
@@ -92,13 +107,6 @@ methods = [
     [ 'MainIcon', 'MainInstruction' ],
     [ 'FooterIcon', 'Footer' ]
 ];
-var ICONS = {
-    'none': 0,
-    'warning': -1,
-    'error': -2,
-    'info': -3,
-    'shield': -4
-};
 for (var i = 0; i < methods.length; i++)
     (function (prop) {
         Object.defineProperty(TaskDialog.prototype, prop[0], {
@@ -141,6 +149,8 @@ TaskDialog.prototype.Show = function (cb) {
                 res.button -= 1000;
             if (res.button >= 101)
                 res.button = this.Buttons[res.button - 101][0];
+            if (res.button in STANDARD_BUTTONS)
+                res.button = STANDARD_BUTTONS[res.button];
             if (res.radio >= 101)
                 res.radio = this.RadioButtons[res.radio - 101][0];
 
