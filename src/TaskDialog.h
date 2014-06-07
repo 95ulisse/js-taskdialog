@@ -126,6 +126,7 @@ namespace Kerr
         // Flags
         void SetUseLinks(bool useLinks = true);
         void SetUseCommandLinks(bool useCommandLinks = true);
+        void SetUseProgressBar(bool useProgressBar = true);
         void SetCancelable(bool cancelable = true);
         void SetMinimizable(bool minimizable = true);
 
@@ -140,7 +141,7 @@ namespace Kerr
         void ClickVerification(bool checked, bool setKeyFocus);
         void EnableButton(int buttonId, bool enable = true);
         void EnableRadioButton(int buttonId, bool enable = true);
-        void SetMarqueeProgressBar(bool marquee = true);
+        void SetProgressBarMarquee(bool marquee = true);
         void SetProgressBarState(int state);
         void SetProgressBarRange(WORD minRange = 0, WORD maxRange = 100);
         void SetProgressBarPosition(int position);
@@ -416,6 +417,15 @@ void Kerr::TaskDialog::SetUseCommandLinks(bool useCommandLinks)
         m_config.dwFlags &= ~TDF_USE_COMMAND_LINKS;
 }
 
+void Kerr::TaskDialog::SetUseProgressBar(bool useProgressBar)
+{
+    ASSERT(m_hWnd == 0);
+    if (useProgressBar)
+        m_config.dwFlags |= TDF_SHOW_PROGRESS_BAR;
+    else
+        m_config.dwFlags &= ~TDF_SHOW_PROGRESS_BAR;
+}
+
 void Kerr::TaskDialog::SetCancelable(bool cancelable)
 {
     ASSERT(m_hWnd == 0);
@@ -501,15 +511,16 @@ void Kerr::TaskDialog::EnableRadioButton(int buttonId,
                 enable);
 }
 
-void Kerr::TaskDialog::SetMarqueeProgressBar(bool marquee)
+void Kerr::TaskDialog::SetProgressBarMarquee(bool marquee)
 {
-    SendMessage(TDM_SET_MARQUEE_PROGRESS_BAR,
-                marquee);
+    SetProgressBarMarquee(marquee, 0);
 }
 
 void Kerr::TaskDialog::SetProgressBarMarquee(bool marquee,
                                              DWORD milliseconds)
 {
+    SendMessage(TDM_SET_MARQUEE_PROGRESS_BAR,
+                marquee);
     SendMessage(TDM_SET_PROGRESS_BAR_MARQUEE,
                 marquee,
                 milliseconds);

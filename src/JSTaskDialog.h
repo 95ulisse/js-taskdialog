@@ -49,6 +49,7 @@ class JSTaskDialog : public Kerr::TaskDialog {
         };
 
         void RaiseJSEvent(const char* eventName, AsyncMessageDataBuilderBase* dataBuilder);
+        void OnDialogConstructed();
         void OnHyperlinkClicked(PCWSTR /*url*/);
         void OnButtonClicked(int /*buttonId*/, bool& closeDialog);
         void OnRadioButtonClicked(int /*buttonId*/);
@@ -95,7 +96,7 @@ void JSTaskDialog::AsyncMessageHandler(uv_async_t* handle, int status) {
     HandleScope scope;
 
     Handle<Object> eventObject = Object::New();
-    eventObject->Set(String::NewSymbol("data"), baton->dataBuilder->Build());
+    eventObject->Set(String::NewSymbol("data"), baton->dataBuilder ? baton->dataBuilder->Build() : Undefined());
 
     Handle<Value> arr[] = {
         String::New(baton->eventName),
@@ -122,6 +123,10 @@ HRESULT JSTaskDialog::DoModal(HWND parent) {
     HRESULT res = Kerr::TaskDialog::DoModal(parent);
     uv_close((uv_handle_t*)&_async, NULL);
     return res;
+}
+
+void JSTaskDialog::OnDialogConstructed() {
+    RaiseJSEvent("loaded", NULL);
 }
 
 void JSTaskDialog::OnHyperlinkClicked(PCWSTR url) {

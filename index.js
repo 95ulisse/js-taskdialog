@@ -13,6 +13,12 @@ var TaskDialogNative = require('./build/Debug/TaskDialog'),
     STANDARD_BUTTONS = {
         1: 'ok',
         2: 'cancel'
+    },
+
+    PROGRESSBAR_STATE = {
+        'normal' : 1,
+        'error': 2,
+        'paused': 3
     };
 
 // Helper function to define an hidden property (non enumerable, non configurable, but writable)
@@ -22,6 +28,27 @@ function defineHiddenProperty(obj, name, value) {
         enumerable: false,
         writable: true,
         value: value
+    });
+}
+
+// Helper function to wrap a native Set* method in a property-like interface
+function wrapNativeMethod(prop, beforeSet, canNativeSet) {
+    Object.defineProperty(TaskDialog.prototype, prop, {
+        configurable: false,
+        enumerable: true,
+        get: function () {
+            return this['_' + prop];
+        },
+        set: function (val) {
+            if (beforeSet)
+                val = beforeSet.call(this, val);
+            if (!Object.prototype.hasOwnProperty.call(this, '_' + prop))
+                defineHiddenProperty(this, '_' + prop, val);
+            else
+                this['_' + prop] = val;
+            if (!canNativeSet || canNativeSet.call(this))
+                this._native['Set' + prop](val);
+        }
     });
 }
 
@@ -62,6 +89,15 @@ function TaskDialog(config) {
     if(config)
         for (var k in config)
             this[k] = config[k];
+
+    // Registers an handler for the `loaded` event to make sure
+    // that properties usable only when the dialog is visible
+    // are re-set to their current value so that a message to the dialog is sent to update the UI
+    this.on('loaded', function () {
+        this.ProgressBarMarquee = this.ProgressBarMarquee;
+        this.ProgressBarPosition = this.ProgressBarPosition;
+        this.ProgressBarState = this.ProgressBarState;
+    });
 }
 
 // Inherits EventEmitter
@@ -79,26 +115,12 @@ var methods = [
     'Footer',
     'UseLinks',
     'UseCommandLinks',
+    'UseProgressBar',
     'Cancelable',
     'Minimizable'
 ];
 for (var i = 0; i < methods.length; i++)
-    (function (prop) {
-        Object.defineProperty(TaskDialog.prototype, prop, {
-            configurable: false,
-            enumerable: true,
-            get: function () {
-                return this['_' + prop];
-            },
-            set: function (val) {
-                if (!Object.prototype.hasOwnProperty.call(this, '_' + prop))
-                    defineHiddenProperty(this, '_' + prop, val);
-                else
-                    this['_' + prop] = val;
-                this._native['Set' + prop](val);
-            }
-        });
-    })(methods[i]);
+    wrapNativeMethod(methods[i]);
 
 // Wraps the Set*Icon methods of the native interface in a property-like interface.
 // This methods should translate icon indexes to a meaningful string,
@@ -109,29 +131,32 @@ methods = [
 ];
 for (var i = 0; i < methods.length; i++)
     (function (prop) {
-        Object.defineProperty(TaskDialog.prototype, prop[0], {
-            configurable: false,
-            enumerable: true,
-            get: function () {
-                return this['_' + prop[0]];
-            },
-            set: function (val) {
-                
-                if (!Object.prototype.hasOwnProperty.call(this, '_' + prop[1]))
-                    throw new Error('Before setting ' + prop[0] + ', ensure that ' + prop[1] + ' has a value');
-
-                if (typeof ICONS[val] === 'undefined')
-                    throw new Error('Unknown icon: ' + val);
-                val = ICONS[val];
-
-                if (!Object.prototype.hasOwnProperty.call(this, '_' + prop[0]))
-                    defineHiddenProperty(this, '_' + prop[0], val);
-                else
-                    this['_' + prop[0]] = val;
-                this._native['Set' + prop[0]](val);
-            }
+        wrapNativeMethod(prop[0], function (val) {
+            if (!Object.prototype.hasOwnProperty.call(this, '_' + prop[1]))
+                throw new Error('Before setting ' + prop[0] + ', ensure that ' + prop[1] + ' has a value');
+            if (!(val in ICONS))
+                throw new Error('Unknown icon: ' + val);
+            return ICONS[val];
         });
     })(methods[i]);
+
+// Wraps the progress bar methods.
+// These methods can be set at any time,
+// but we must ensure that if the dialog isn't visible,
+// the native method must not be called
+wrapNativeMethod('ProgressBarMarquee', null, function () { return this.IsVisible; })
+wrapNativeMethod('ProgressBarPosition', null, function () { return this.IsVisible; });
+wrapNativeMethod(
+    'ProgressBarState',
+    function (val) {
+        if (!(val in PROGRESSBAR_STATE))
+            throw new Error('Unknown state: ' + val);
+        return PROGRESSBAR_STATE[val];
+    },
+    function () {
+        return this.IsVisible;
+    }
+);
 
 // Show method
 TaskDialog.prototype.Show = function (cb) {
@@ -141,26 +166,26 @@ TaskDialog.prototype.Show = function (cb) {
     this._native.SetRadioButtons(this.RadioButtons || []);
 
     // Shows the dialog
-    if (cb) {
-        this._native.Show(function (res) {
+    this.IsVisible = true;
+    this._native.Show(function (res) {
 
-            // Maps the native results to meaningful data
-            if (res.button > 1000) // Removes the increment of 1000 for message-only buttons
-                res.button -= 1000;
-            if (res.button >= 101)
-                res.button = this.Buttons[res.button - 101][0];
-            if (res.button in STANDARD_BUTTONS)
-                res.button = STANDARD_BUTTONS[res.button];
-            if (res.radio >= 101)
-                res.radio = this.RadioButtons[res.radio - 101][0];
+        this.IsVisible = false;
 
-            // Returns the result
+        // Maps the native results to meaningful data
+        if (res.button > 1000) // Removes the increment of 1000 for message-only buttons
+            res.button -= 1000;
+        if (res.button >= 101)
+            res.button = this.Buttons[res.button - 101][0];
+        if (res.button in STANDARD_BUTTONS)
+            res.button = STANDARD_BUTTONS[res.button];
+        if (res.radio >= 101)
+            res.radio = this.RadioButtons[res.radio - 101][0];
+
+        // Calls the callback
+        if (cb)
             cb(res);
 
-        }.bind(this));
-    } else {
-        this._native.Show();
-    }
+    }.bind(this));
 
 };
 

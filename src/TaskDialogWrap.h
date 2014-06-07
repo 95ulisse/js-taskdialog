@@ -43,11 +43,15 @@ class TaskDialogWrap : public node::ObjectWrap {
 
         PROTOTYPE_PROP_DEF(UseLinks)
         PROTOTYPE_PROP_DEF(UseCommandLinks)
+        PROTOTYPE_PROP_DEF(UseProgressBar)
         PROTOTYPE_PROP_DEF(Cancelable)
         PROTOTYPE_PROP_DEF(Minimizable)
+        PROTOTYPE_PROP_DEF(ProgressBarMarquee)
 
         PROTOTYPE_PROP_DEF(MainIcon)
         PROTOTYPE_PROP_DEF(FooterIcon)
+        PROTOTYPE_PROP_DEF(ProgressBarState)
+        PROTOTYPE_PROP_DEF(ProgressBarPosition)
 
         // Prototype methods
         static Handle<Value> Show(const Arguments& args);
@@ -119,11 +123,15 @@ Handle<Function> TaskDialogWrap::Init() {
 
     PROTOTYPE_PROP(proto, UseLinks)
     PROTOTYPE_PROP(proto, UseCommandLinks)
+    PROTOTYPE_PROP(proto, UseProgressBar)
     PROTOTYPE_PROP(proto, Cancelable)
     PROTOTYPE_PROP(proto, Minimizable)
+    PROTOTYPE_PROP(proto, ProgressBarMarquee)
     
     PROTOTYPE_PROP(proto, MainIcon)
     PROTOTYPE_PROP(proto, FooterIcon)
+    PROTOTYPE_PROP(proto, ProgressBarState)
+    PROTOTYPE_PROP(proto, ProgressBarPosition)
 
     // Prototype methods
     proto->Set(String::NewSymbol("Show"), FunctionTemplate::New(Show)->GetFunction());
@@ -179,10 +187,16 @@ PROTOTYPE_PROP_STRING_IMPL(VerificationText)
 PROTOTYPE_PROP_STRING_IMPL(Footer)
 PROTOTYPE_PROP_BOOL_IMPL(UseLinks)
 PROTOTYPE_PROP_BOOL_IMPL(UseCommandLinks)
+PROTOTYPE_PROP_BOOL_IMPL(UseProgressBar)
 PROTOTYPE_PROP_BOOL_IMPL(Cancelable)
 PROTOTYPE_PROP_BOOL_IMPL(Minimizable)
+PROTOTYPE_PROP_BOOL_IMPL(ProgressBarMarquee)
 PROTOTYPE_PROP_INT_IMPL(MainIcon)
 PROTOTYPE_PROP_INT_IMPL(FooterIcon)
+PROTOTYPE_PROP_INT_IMPL(ProgressBarState)
+PROTOTYPE_PROP_INT_IMPL(ProgressBarPosition)
+
+//void SetProgressBarRange(WORD minRange = 0, WORD maxRange = 100);
 
 // Prototype methods
 
