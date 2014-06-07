@@ -42,7 +42,7 @@ function wrapNativeMethod(prop, beforeSet, canNativeSet) {
         set: function (val) {
             if (beforeSet)
                 val = beforeSet.call(this, val);
-            if (!Object.prototype.hasOwnProperty.call(this, '_' + prop))
+            if (!isPropSet(this, '_' + prop))
                 defineHiddenProperty(this, '_' + prop, val);
             else
                 this['_' + prop] = val;
@@ -50,6 +50,11 @@ function wrapNativeMethod(prop, beforeSet, canNativeSet) {
                 this._native['Set' + prop](val);
         }
     });
+}
+
+// Helper function to check if a native property has been set
+function isPropSet(obj, prop) {
+    return Object.prototype.hasOwnProperty.call(obj, '_' + prop);
 }
 
 // TaskDialog class
@@ -94,10 +99,13 @@ function TaskDialog(config) {
     // that properties usable only when the dialog is visible
     // are re-set to their current value so that a message to the dialog is sent to update the UI
     this.on('loaded', function () {
-        this.ProgressBarMarquee = this.ProgressBarMarquee;
-        this.ProgressBarPosition = this.ProgressBarPosition;
-        this.ProgressBarState = this.ProgressBarState;
-    });
+        if (isPropSet(this, 'ProgressBarMarquee'))
+            this.ProgressBarMarquee = this.ProgressBarMarquee;
+        if (isPropSet(this, 'ProgressBarPosition'))
+            this.ProgressBarPosition = this.ProgressBarPosition;
+        if (isPropSet(this, 'ProgressBarState'))
+            this.ProgressBarState = this.ProgressBarState;
+    }.bind(this));
 }
 
 // Inherits EventEmitter
@@ -116,6 +124,7 @@ var methods = [
     'UseLinks',
     'UseCommandLinks',
     'UseProgressBar',
+    'UseTimer',
     'Cancelable',
     'Minimizable'
 ];
@@ -132,7 +141,7 @@ methods = [
 for (var i = 0; i < methods.length; i++)
     (function (prop) {
         wrapNativeMethod(prop[0], function (val) {
-            if (!Object.prototype.hasOwnProperty.call(this, '_' + prop[1]))
+            if (!isPropSet(this, '_' + prop[1]))
                 throw new Error('Before setting ' + prop[0] + ', ensure that ' + prop[1] + ' has a value');
             if (!(val in ICONS))
                 throw new Error('Unknown icon: ' + val);
@@ -187,6 +196,12 @@ TaskDialog.prototype.Show = function (cb) {
 
     }.bind(this));
 
+};
+
+// Other native methods
+TaskDialog.prototype.ResetTimer = function () {
+    if (this.UseTimer && this.IsVisible)
+        this._native.ResetTimer();
 };
 
 // Freezes TaskDialog prototype

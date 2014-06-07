@@ -127,6 +127,7 @@ namespace Kerr
         void SetUseLinks(bool useLinks = true);
         void SetUseCommandLinks(bool useCommandLinks = true);
         void SetUseProgressBar(bool useProgressBar = true);
+        void SetUseTimer(bool useTimer = true);
         void SetCancelable(bool cancelable = true);
         void SetMinimizable(bool minimizable = true);
 
@@ -148,6 +149,7 @@ namespace Kerr
         void SetProgressBarMarquee(bool marquee, DWORD speed);
         void SetButtonElevationRequired(int buttonId, bool required = true);
         void NavigatePage(TaskDialog& newDialog);
+        void ResetTimer();
 
     protected:
 
@@ -174,13 +176,15 @@ namespace Kerr
         int m_selectedButtonId;
         int m_selectedRadioButtonId;
         BOOL m_verificationChecked;
+        BOOL m_resetTimer;
     };
 }
 
 Kerr::TaskDialog::TaskDialog() :
     m_selectedButtonId(0),
     m_selectedRadioButtonId(0),
-    m_verificationChecked(FALSE)
+    m_verificationChecked(FALSE),
+    m_resetTimer(FALSE)
 {
     ::ZeroMemory(&m_config, 
                  sizeof (TASKDIALOGCONFIG));
@@ -426,6 +430,15 @@ void Kerr::TaskDialog::SetUseProgressBar(bool useProgressBar)
         m_config.dwFlags &= ~TDF_SHOW_PROGRESS_BAR;
 }
 
+void Kerr::TaskDialog::SetUseTimer(bool useTimer)
+{
+    ASSERT(m_hWnd == 0);
+    if (useTimer)
+        m_config.dwFlags |= TDF_CALLBACK_TIMER;
+    else
+        m_config.dwFlags &= ~TDF_CALLBACK_TIMER;
+}
+
 void Kerr::TaskDialog::SetCancelable(bool cancelable)
 {
     ASSERT(m_hWnd == 0);
@@ -563,6 +576,10 @@ void Kerr::TaskDialog::NavigatePage(TaskDialog& newDialog)
                 reinterpret_cast<LPARAM>(&newDialog.m_config));
 }
 
+void Kerr::TaskDialog::ResetTimer() {
+    m_resetTimer = true;
+}
+
 HRESULT Kerr::TaskDialog::Callback(HWND handle, 
                                    UINT notification, 
                                    WPARAM wParam, 
@@ -597,8 +614,14 @@ HRESULT Kerr::TaskDialog::Callback(HWND handle,
         case TDN_TIMER:
         {
             ASSERT(UINT_MAX >= wParam);
-            bool reset = false;
-            pThis->OnTimer(static_cast<DWORD>(wParam), reset);
+            bool reset = pThis->m_resetTimer;
+            if (!reset) {
+                pThis->OnTimer(static_cast<DWORD>(wParam), reset);
+            } else {
+                pThis->OnTimer(0, reset);
+                pThis->m_resetTimer = FALSE;
+                reset = true;
+            }
             result = reset;
             break;
         }

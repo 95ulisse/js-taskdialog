@@ -44,6 +44,7 @@ class TaskDialogWrap : public node::ObjectWrap {
         PROTOTYPE_PROP_DEF(UseLinks)
         PROTOTYPE_PROP_DEF(UseCommandLinks)
         PROTOTYPE_PROP_DEF(UseProgressBar)
+        PROTOTYPE_PROP_DEF(UseTimer)
         PROTOTYPE_PROP_DEF(Cancelable)
         PROTOTYPE_PROP_DEF(Minimizable)
         PROTOTYPE_PROP_DEF(ProgressBarMarquee)
@@ -57,6 +58,7 @@ class TaskDialogWrap : public node::ObjectWrap {
         static Handle<Value> Show(const Arguments& args);
         static Handle<Value> SetButtons(const Arguments& args);
         static Handle<Value> SetRadioButtons(const Arguments& args);
+        static Handle<Value> ResetTimer(const Arguments& args);
 
         // Helpers
         struct Show_Baton {
@@ -124,6 +126,7 @@ Handle<Function> TaskDialogWrap::Init() {
     PROTOTYPE_PROP(proto, UseLinks)
     PROTOTYPE_PROP(proto, UseCommandLinks)
     PROTOTYPE_PROP(proto, UseProgressBar)
+    PROTOTYPE_PROP(proto, UseTimer)
     PROTOTYPE_PROP(proto, Cancelable)
     PROTOTYPE_PROP(proto, Minimizable)
     PROTOTYPE_PROP(proto, ProgressBarMarquee)
@@ -137,6 +140,7 @@ Handle<Function> TaskDialogWrap::Init() {
     proto->Set(String::NewSymbol("Show"), FunctionTemplate::New(Show)->GetFunction());
     proto->Set(String::NewSymbol("SetButtons"), FunctionTemplate::New(SetButtons)->GetFunction());
     proto->Set(String::NewSymbol("SetRadioButtons"), FunctionTemplate::New(SetRadioButtons)->GetFunction());
+    proto->Set(String::NewSymbol("ResetTimer"), FunctionTemplate::New(ResetTimer)->GetFunction());
 
     // Actual constructor function
     _constructor = Persistent<Function>::New(tpl->GetFunction());
@@ -188,6 +192,7 @@ PROTOTYPE_PROP_STRING_IMPL(Footer)
 PROTOTYPE_PROP_BOOL_IMPL(UseLinks)
 PROTOTYPE_PROP_BOOL_IMPL(UseCommandLinks)
 PROTOTYPE_PROP_BOOL_IMPL(UseProgressBar)
+PROTOTYPE_PROP_BOOL_IMPL(UseTimer)
 PROTOTYPE_PROP_BOOL_IMPL(Cancelable)
 PROTOTYPE_PROP_BOOL_IMPL(Minimizable)
 PROTOTYPE_PROP_BOOL_IMPL(ProgressBarMarquee)
@@ -305,6 +310,11 @@ void TaskDialogWrap::Show_ThreadAfter(uv_work_t* request, int status) {
     // Disposes the callback and the baton
     baton->callback.Dispose();
     delete baton;
+}
+
+Handle<Value> TaskDialogWrap::ResetTimer(const Arguments& args) {
+    node::ObjectWrap::Unwrap<TaskDialogWrap>(args.This())->_taskDialog->ResetTimer();
+    return Undefined();
 }
 
 #undef PROTOTYPE_PROP_STRING

@@ -55,6 +55,7 @@ class JSTaskDialog : public Kerr::TaskDialog {
         void OnRadioButtonClicked(int /*buttonId*/);
         void OnVerificationClicked(bool /*checked*/);
         void OnExpandoButtonClicked(bool /*expanded*/);
+        void OnTimer(DWORD /*milliseconds*/, bool& /*reset*/);
 };
 
 // ************************************************
@@ -151,4 +152,9 @@ void JSTaskDialog::OnVerificationClicked(bool checked) {
 
 void JSTaskDialog::OnExpandoButtonClicked(bool expanded) {
     RaiseJSEvent("click:expando", new AsyncMessageDataBuilder<bool>(expanded));
+}
+
+void JSTaskDialog::OnTimer(DWORD milliseconds, bool& reset) {
+    reset = false;
+    RaiseJSEvent("timer", new AsyncMessageDataBuilder<unsigned long>(milliseconds));
 }
