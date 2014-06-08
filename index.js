@@ -1,4 +1,4 @@
-var TaskDialogNative = require('./build/Debug/TaskDialog'),
+var TaskDialogNative = require('./build/Release/TaskDialog'),
     EventEmitter = require('events').EventEmitter,
     util = require('util'),
 
