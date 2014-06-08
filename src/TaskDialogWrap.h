@@ -29,6 +29,7 @@ class TaskDialogWrap : public node::ObjectWrap {
 
         // Constructor
         static Persistent<Function> _constructor;
+        static Persistent<FunctionTemplate> _constructorTemplate;
         static Handle<Value> New(const Arguments& args);
 
         // Prototype properties implementation
@@ -59,6 +60,7 @@ class TaskDialogWrap : public node::ObjectWrap {
         static Handle<Value> SetButtons(const Arguments& args);
         static Handle<Value> SetRadioButtons(const Arguments& args);
         static Handle<Value> ResetTimer(const Arguments& args);
+        static Handle<Value> Navigate(const Arguments& args);
 
         // Helpers
         struct Show_Baton {
@@ -105,10 +107,15 @@ class TaskDialogWrap : public node::ObjectWrap {
         return Undefined(); \
     }
 
+// Static initialization
+Persistent<Function> TaskDialogWrap::_constructor;
+Persistent<FunctionTemplate> TaskDialogWrap::_constructorTemplate;
 Handle<Function> TaskDialogWrap::Init() {
+    HandleScope scope;
 
     // Prepare constructor template
     Local<FunctionTemplate> tpl = FunctionTemplate::New(New);
+    TaskDialogWrap::_constructorTemplate = Persistent<FunctionTemplate>::New(tpl);
     tpl->SetClassName(String::NewSymbol("TaskDialog"));
     tpl->InstanceTemplate()->SetInternalFieldCount(1);
 
@@ -141,6 +148,7 @@ Handle<Function> TaskDialogWrap::Init() {
     proto->Set(String::NewSymbol("SetButtons"), FunctionTemplate::New(SetButtons)->GetFunction());
     proto->Set(String::NewSymbol("SetRadioButtons"), FunctionTemplate::New(SetRadioButtons)->GetFunction());
     proto->Set(String::NewSymbol("ResetTimer"), FunctionTemplate::New(ResetTimer)->GetFunction());
+    proto->Set(String::NewSymbol("Navigate"), FunctionTemplate::New(Navigate)->GetFunction());
 
     // Actual constructor function
     _constructor = Persistent<Function>::New(tpl->GetFunction());
@@ -159,7 +167,6 @@ TaskDialogWrap::~TaskDialogWrap() {
 }
 
 // Constructor
-Persistent<Function> TaskDialogWrap::_constructor;
 Handle<Value> TaskDialogWrap::New(const v8::Arguments& args) {
 
     // Makes sure that a single function is passed
@@ -220,6 +227,7 @@ Handle<Value> TaskDialogWrap::SetButtons(const Arguments& args) {
     // Builds the buttons list from the JS array
     Handle<Array> arr = Handle<Array>::Cast(args[0]);
     td->Buttons().RemoveAll();
+    td->SetCommonButtons(0);
     for (int i = 0; i < arr->Length(); i++) {
         if (!arr->Get(i)->IsArray())
             return ThrowException(Exception::TypeError(String::New("Parameter must be an array of arrays, where the first member is a custom value and the second one is the text to display. Optionally, the third argument can be a boolean indicating whether the button is a message-only button or not.")));
@@ -314,6 +322,15 @@ void TaskDialogWrap::Show_ThreadAfter(uv_work_t* request, int status) {
 
 Handle<Value> TaskDialogWrap::ResetTimer(const Arguments& args) {
     node::ObjectWrap::Unwrap<TaskDialogWrap>(args.This())->_taskDialog->ResetTimer();
+    return Undefined();
+}
+
+Handle<Value> TaskDialogWrap::Navigate(const Arguments& args) {
+    if (args.Length() != 1 || !args[0]->IsObject() || args[0]->ToObject()->FindInstanceInPrototypeChain(TaskDialogWrap::_constructorTemplate).IsEmpty())
+        return ThrowException(Exception::TypeError(String::New("Expected only one TaskDialog as argument")));
+    JSTaskDialog* tdThis = node::ObjectWrap::Unwrap<TaskDialogWrap>(args.This())->_taskDialog;
+    JSTaskDialog* tdDest = node::ObjectWrap::Unwrap<TaskDialogWrap>(args[0]->ToObject())->_taskDialog;
+    tdThis->NavigatePage(*tdDest);
     return Undefined();
 }
 

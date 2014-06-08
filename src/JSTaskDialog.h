@@ -21,11 +21,12 @@ class JSTaskDialog : public Kerr::TaskDialog {
         JSTaskDialog(Persistent<Function> callback);
         ~JSTaskDialog();
         HRESULT DoModal(HWND parent = ::GetActiveWindow());
+        void NavigatePage(TaskDialog& dest);
 
     private:
 
         Persistent<Function> _callbackFunction;
-        uv_async_t _async;
+        uv_async_t* _async;
         static void AsyncMessageHandler(uv_async_t* handle, int status);
 
         class AsyncMessageDataBuilderBase {
@@ -50,6 +51,7 @@ class JSTaskDialog : public Kerr::TaskDialog {
 
         void RaiseJSEvent(const char* eventName, AsyncMessageDataBuilderBase* dataBuilder);
         void OnDialogConstructed();
+        void OnNavigated();
         void OnHyperlinkClicked(PCWSTR /*url*/);
         void OnButtonClicked(int /*buttonId*/, bool& closeDialog);
         void OnRadioButtonClicked(int /*buttonId*/);
@@ -80,7 +82,8 @@ Handle<Value> JSTaskDialog::AsyncMessageDataBuilder<T>::Build() {
 //-----------------
 
 JSTaskDialog::JSTaskDialog(Persistent<Function> callback) :
-    _callbackFunction(callback)
+    _callbackFunction(callback),
+    _async(NULL)
 {
     SetMainIcon((ATL::_U_STRINGorID)(UINT)0);
     SetFooterIcon((ATL::_U_STRINGorID)(UINT)0);
@@ -88,6 +91,8 @@ JSTaskDialog::JSTaskDialog(Persistent<Function> callback) :
 
 JSTaskDialog::~JSTaskDialog() {
     _callbackFunction.Dispose();
+    if (_async)
+        delete _async;
 }
 
 // This function is called on the main thread, and is the only one allowed to use v8
@@ -115,19 +120,30 @@ void JSTaskDialog::RaiseJSEvent(const char* eventName, AsyncMessageDataBuilderBa
     baton->td = this;
     baton->eventName = eventName;
     baton->dataBuilder = dataBuilder;
-    _async.data = baton;
-    uv_async_send(&_async);
+    _async->data = baton;
+    uv_async_send(_async);
 }
 
 HRESULT JSTaskDialog::DoModal(HWND parent) {
-    uv_async_init(uv_default_loop(), &_async, JSTaskDialog::AsyncMessageHandler);
+    uv_async_t a;
+    _async = &a; // We need to store a pointer to the uv_async_t because it must be shared between objects while navigating
+    uv_async_init(uv_default_loop(), _async, JSTaskDialog::AsyncMessageHandler);
     HRESULT res = Kerr::TaskDialog::DoModal(parent);
-    uv_close((uv_handle_t*)&_async, NULL);
+    uv_close((uv_handle_t*)_async, NULL);
     return res;
+}
+
+void JSTaskDialog::NavigatePage(TaskDialog& dest) {
+    ((JSTaskDialog&)dest)._async = this->_async;
+    Kerr::TaskDialog::NavigatePage(dest);
 }
 
 void JSTaskDialog::OnDialogConstructed() {
     RaiseJSEvent("loaded", NULL);
+}
+
+void JSTaskDialog::OnNavigated() {
+    RaiseJSEvent("navigated", NULL);
 }
 
 void JSTaskDialog::OnHyperlinkClicked(PCWSTR url) {

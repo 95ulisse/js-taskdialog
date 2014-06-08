@@ -124,6 +124,7 @@ namespace Kerr
                             int id);
 
         // Flags
+        void SetCommonButtons(TASKDIALOG_COMMON_BUTTON_FLAGS commonButtons);
         void SetUseLinks(bool useLinks = true);
         void SetUseCommandLinks(bool useCommandLinks = true);
         void SetUseProgressBar(bool useProgressBar = true);
@@ -137,19 +138,19 @@ namespace Kerr
         bool VerificiationChecked() const;
 
         // Messages
-        void ClickButton(int buttonId);
-        void ClickRadioButton(int buttonId);
-        void ClickVerification(bool checked, bool setKeyFocus);
-        void EnableButton(int buttonId, bool enable = true);
-        void EnableRadioButton(int buttonId, bool enable = true);
-        void SetProgressBarMarquee(bool marquee = true);
-        void SetProgressBarState(int state);
-        void SetProgressBarRange(WORD minRange = 0, WORD maxRange = 100);
-        void SetProgressBarPosition(int position);
-        void SetProgressBarMarquee(bool marquee, DWORD speed);
-        void SetButtonElevationRequired(int buttonId, bool required = true);
-        void NavigatePage(TaskDialog& newDialog);
-        void ResetTimer();
+        virtual void ClickButton(int buttonId);
+        virtual void ClickRadioButton(int buttonId);
+        virtual void ClickVerification(bool checked, bool setKeyFocus);
+        virtual void EnableButton(int buttonId, bool enable = true);
+        virtual void EnableRadioButton(int buttonId, bool enable = true);
+        virtual void SetProgressBarMarquee(bool marquee = true);
+        virtual void SetProgressBarState(int state);
+        virtual void SetProgressBarRange(WORD minRange = 0, WORD maxRange = 100);
+        virtual void SetProgressBarPosition(int position);
+        virtual void SetProgressBarMarquee(bool marquee, DWORD speed);
+        virtual void SetButtonElevationRequired(int buttonId, bool required = true);
+        virtual void NavigatePage(TaskDialog& newDialog);
+        virtual void ResetTimer();
 
     protected:
 
@@ -403,6 +404,11 @@ void Kerr::TaskDialog::AddRadioButton(ATL::_U_STRINGorID text,
     m_radioButtons[index].nButtonID = id;
 }
 
+void Kerr::TaskDialog::SetCommonButtons(TASKDIALOG_COMMON_BUTTON_FLAGS commonButtons) {
+    ASSERT(m_hWnd == 0);
+    m_config.dwCommonButtons = commonButtons;
+}
+
 void Kerr::TaskDialog::SetUseLinks(bool useLinks)
 {
     ASSERT(m_hWnd == 0);
@@ -570,6 +576,11 @@ void Kerr::TaskDialog::SetButtonElevationRequired(int buttonId,
 void Kerr::TaskDialog::NavigatePage(TaskDialog& newDialog)
 {
     ASSERT(0 == newDialog.m_hWnd);
+
+    newDialog.m_config.pButtons = newDialog.m_buttons.GetData();
+    newDialog.m_config.cButtons = static_cast<UINT>(newDialog.m_buttons.GetCount());
+    newDialog.m_config.pRadioButtons = newDialog.m_radioButtons.GetData();
+    newDialog.m_config.cRadioButtons = static_cast<UINT>(newDialog.m_radioButtons.GetCount());
 
     SendMessage(TDM_NAVIGATE_PAGE,
                 0,

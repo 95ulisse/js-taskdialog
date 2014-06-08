@@ -31,6 +31,16 @@ function defineHiddenProperty(obj, name, value) {
     });
 }
 
+// Helper function to define an hidden property (non enumerable, non configurable, not writable)
+function defineHiddenROProperty(obj, name, value) {
+    Object.defineProperty(obj, name, {
+        configurable: false,
+        enumerable: false,
+        writable: false,
+        value: value
+    });
+}
+
 // Helper function to wrap a native Set* method in a property-like interface
 function wrapNativeMethod(prop, beforeSet, canNativeSet) {
     Object.defineProperty(TaskDialog.prototype, prop, {
@@ -178,17 +188,23 @@ TaskDialog.prototype.Show = function (cb) {
     this.IsVisible = true;
     this._native.Show(function (res) {
 
-        this.IsVisible = false;
+        // If this is not the final page, the button IDs must refer to the last visible page
+        var finalPage = this;
+        while(finalPage._navigatedTo)
+            finalPage = finalPage._navigatedTo;
+
+        // Marks the dialog as not visible anymore
+        finalPage.IsVisible = false;
 
         // Maps the native results to meaningful data
         if (res.button > 1000) // Removes the increment of 1000 for message-only buttons
             res.button -= 1000;
         if (res.button >= 101)
-            res.button = this.Buttons[res.button - 101][0];
+            res.button = finalPage.Buttons[res.button - 101][0];
         if (res.button in STANDARD_BUTTONS)
             res.button = STANDARD_BUTTONS[res.button];
         if (res.radio >= 101)
-            res.radio = this.RadioButtons[res.radio - 101][0];
+            res.radio = finalPage.RadioButtons[res.radio - 101][0];
 
         // Calls the callback
         if (cb)
@@ -202,6 +218,29 @@ TaskDialog.prototype.Show = function (cb) {
 TaskDialog.prototype.ResetTimer = function () {
     if (this.UseTimer && this.IsVisible)
         this._native.ResetTimer();
+};
+TaskDialog.prototype.Navigate = function (dest) {
+    
+    // Checks that `dest` is a valid TaskDialog
+    if (!(dest instanceof TaskDialog))
+        throw new Error("Expected another TaskDialog instance");
+    if (dest.IsVisible)
+        throw new Error("Cannot navigate to a dialog already visible");
+
+    // Makes sure that buttons are up to date
+    dest._native.SetButtons(dest.Buttons || []);
+    dest._native.SetRadioButtons(dest.RadioButtons || []);
+
+    // Registers an event on the destination dialog to swap the visibility flags on the `navigated` event
+    dest.on('navigated', function () {
+        this.IsVisible = false;
+        dest.IsVisible = true;
+        defineHiddenROProperty(this, '_navigatedTo', dest);
+    }.bind(this));
+
+    // Navigates to the destination dialog
+    this._native.Navigate(dest._native);
+
 };
 
 // Freezes TaskDialog prototype
