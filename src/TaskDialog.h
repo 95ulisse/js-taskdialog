@@ -585,6 +585,8 @@ void Kerr::TaskDialog::NavigatePage(TaskDialog& newDialog)
     SendMessage(TDM_NAVIGATE_PAGE,
                 0,
                 reinterpret_cast<LPARAM>(&newDialog.m_config));
+
+    this->Detach();
 }
 
 void Kerr::TaskDialog::ResetTimer() {

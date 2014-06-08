@@ -113,6 +113,9 @@ Persistent<FunctionTemplate> TaskDialogWrap::_constructorTemplate;
 Handle<Function> TaskDialogWrap::Init() {
     HandleScope scope;
 
+    // Initializes dependencies
+    JSTaskDialog::Initialize();
+
     // Prepare constructor template
     Local<FunctionTemplate> tpl = FunctionTemplate::New(New);
     TaskDialogWrap::_constructorTemplate = Persistent<FunctionTemplate>::New(tpl);

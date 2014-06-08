@@ -23,22 +23,15 @@ var TaskDialogNative = require('./build/Debug/TaskDialog'),
 
 // Helper function to define an hidden property (non enumerable, non configurable, but writable)
 function defineHiddenProperty(obj, name, value) {
-    Object.defineProperty(obj, name, {
-        configurable: false,
-        enumerable: false,
-        writable: true,
-        value: value
-    });
-}
-
-// Helper function to define an hidden property (non enumerable, non configurable, not writable)
-function defineHiddenROProperty(obj, name, value) {
-    Object.defineProperty(obj, name, {
-        configurable: false,
-        enumerable: false,
-        writable: false,
-        value: value
-    });
+    if (Object.hasOwnProperty.call(obj, name))
+        obj[name] = value;
+    else
+        Object.defineProperty(obj, name, {
+            configurable: false,
+            enumerable: false,
+            writable: true,
+            value: value
+        });
 }
 
 // Helper function to wrap a native Set* method in a property-like interface
@@ -52,7 +45,7 @@ function wrapNativeMethod(prop, beforeSet, canNativeSet) {
         set: function (val) {
             if (beforeSet)
                 val = beforeSet.call(this, val);
-            if (!isPropSet(this, '_' + prop))
+            if (!isPropSet(this, prop))
                 defineHiddenProperty(this, '_' + prop, val);
             else
                 this['_' + prop] = val;
@@ -151,7 +144,7 @@ methods = [
 for (var i = 0; i < methods.length; i++)
     (function (prop) {
         wrapNativeMethod(prop[0], function (val) {
-            if (!isPropSet(this, '_' + prop[1]))
+            if (!isPropSet(this, prop[1]))
                 throw new Error('Before setting ' + prop[0] + ', ensure that ' + prop[1] + ' has a value');
             if (!(val in ICONS))
                 throw new Error('Unknown icon: ' + val);
@@ -179,6 +172,10 @@ wrapNativeMethod(
 
 // Show method
 TaskDialog.prototype.Show = function (cb) {
+
+    // If the dialog is visible
+    if (this.IsVisible)
+        return;
 
     // Makes sure that buttons are up to date
     this._native.SetButtons(this.Buttons || []);
@@ -232,11 +229,9 @@ TaskDialog.prototype.Navigate = function (dest) {
     dest._native.SetRadioButtons(dest.RadioButtons || []);
 
     // Registers an event on the destination dialog to swap the visibility flags on the `navigated` event
-    dest.on('navigated', function () {
-        this.IsVisible = false;
-        dest.IsVisible = true;
-        defineHiddenROProperty(this, '_navigatedTo', dest);
-    }.bind(this));
+    this.IsVisible = false;
+    dest.IsVisible = true;
+    defineHiddenProperty(this, '_navigatedTo', dest);
 
     // Navigates to the destination dialog
     this._native.Navigate(dest._native);
