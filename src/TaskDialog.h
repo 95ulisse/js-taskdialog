@@ -6,6 +6,8 @@
 //  Description:    Implements a C++ wrapper for the TaskDialogIndirect 
 //                  function.
 //
+// (Sligthly modified by Marco Cameriero to fit in this project)
+// 
 //*****************************************************************************
 
 #pragma once
