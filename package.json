@@ -1,6 +1,6 @@
 {
   "name": "js-taskdialog",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Wrapper around the windows TaskDialog API",
   "main": "index.js",
   "scripts": {
@@ -25,5 +25,7 @@
     "url": "https://github.com/95ulisse/js-taskdialog/issues"
   },
   "homepage": "https://github.com/95ulisse/js-taskdialog",
-  "os": [ "win32" ]
+  "os": [
+    "win32"
+  ]
 }
